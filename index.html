@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Basic HTML metadata -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap demo</title>
+
+    <!-- Bootstrap 5 CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" 
+      integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" 
+      crossorigin="anonymous">
+  </head>
+  <body>
+    <!-- Bootstrap container for layout -->
+    <div class="container mt-5">
+      <h1>Spring Boot with Payment Gateway</h1>
+
+      <!-- Table used for form layout -->
+      <table class="table">
+        <tr>
+          <td>Enter Name:</td>
+          <td>
+            <!-- Input field for user's name -->
+            <input type="text" name="name" id="name" class="form-control" />
+          </td>
+        </tr>
+        <tr>
+          <td>Enter Email:</td>
+          <td>
+            <!-- Input field for user's email -->
+            <input type="email" name="email" id="email" class="form-control" required />
+          </td>
+        </tr>
+        <tr>
+          <td>Phone Number:</td>
+          <td>
+            <!-- Input field for phone number -->
+            <input type="number" name="phno" id="phno" class="form-control" required />
+          </td>
+        </tr>
+        <tr>
+          <td>Select Course:</td>
+          <td>
+            <!-- Dropdown menu to select course -->
+            <select class="form-select" name="course" id="course" aria-label="Course select" required>
+              <option selected disabled>-Select Course-</option>
+              <option value="java">Java</option>
+              <option value="python">Python</option>
+              <option value="devops">DevOps</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Enter Amount:</td>
+          <td>
+            <!-- Input field for payment amount -->
+            <input type="number" name="amount" id="amount" class="form-control" required />
+          </td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>
+            <!-- Button to initiate payment -->
+            <button id="rzp-button1" class="btn btn-primary">Proceed To Pay</button>
+          </td>
+        </tr>
+      </table>
+    </div>
+    
+    <!-- Razorpay SDK (predefined javascript file ) -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <!-- JavaScript block for order creation and Razorpay handling -->
+    <script>
+      // Function to create an order by calling Spring Boot backend API
+      async function createOrder() {
+        console.log("---order creation started--------");
+
+        // Send a POST request to the backend API
+        const response = await fetch('http://localhost:8080/create-order', {
+          method: 'POST', // HTTP method
+          headers: {
+            'Content-Type': 'application/json' // Specify the request body format
+          },
+          body: JSON.stringify({  // Convert form values into JSON string
+            name: document.getElementById('name').value,       // User's name
+            email: document.getElementById('email').value,     // User's email
+            phno: document.getElementById('phno').value,       // User's phone number
+            course: document.getElementById('course').value,   // Selected course
+            amount: document.getElementById('amount').value,   // Entered amount
+            currency: 'INR'                                    // Currency fixed to INR
+          })
+        });
+
+        // Parse backend response into a JS object
+        const order = await response.json();
+        console.log("order creation complete----");
+        console.log(order);
+        return order; // Return the created order for next step
+      }
+
+      // Event listener when payment button is clicked
+      document.getElementById('rzp-button1').onclick = async function(e) {
+        const order = await createOrder(); // Call createOrder() and wait for result
+        console.log(order); // Log the returned order for debugging
+
+        // Razorpay payment options (required format)
+        var options = {
+        		  key: "rzp_test_GmPLo7IcEgHtPZ",               // Razorpay test key
+        		  amount: order.amount,                          // Amount in paise
+        		  currency: "INR",
+        		  name: "Sagar",
+        		  description: "Course Payment",
+        		  order_id: order.razorpayOrderId,               // Provided from backend (must be real Razorpay order ID)
+        		  
+        		  // ✅ Razorpay sends this response after successful payment
+        		  handler: function (response) {
+        		    // 👇 Redirect user to backend with payment details
+        		    const redirectUrl = `http://localhost:8080/payment-success?razorpay_order_id=${response.razorpay_order_id}&razorpay_payment_id=${response.razorpay_payment_id}&razorpay_signature=${response.razorpay_signature}`;
+        		    window.location.href = redirectUrl;
+        		  },
+        		  
+        		  prefill: {
+        		    name: order.name,
+        		    email: order.email,
+        		    contact: order.phno
+        		  },
+
+        		  theme: {
+        		    color: "#3399cc"
+        		  }
+        		};
+
+
+
+        // Create Razorpay object with options
+        var rzp1 = new Razorpay(options);
+        rzp1.open(); // Open Razorpay payment page
+
+        // Prevent default form submit behavior
+        e.preventDefault();
+      }
+    </script>
+
+    <!-- Bootstrap JavaScript Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" 
+      integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" 
+      crossorigin="anonymous"></script>
+
+    <!-- Note:
+      - The IDs used in JavaScript must match the HTML input `id`s.
+      - Backend should return a JSON response containing Razorpay order ID, amount, etc.
+      - Ensure CORS is enabled in your Spring Boot backend if calling from different origin.
+    -->
+  </body>
+</html>
+<!--  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+✔ Loads Razorpay's JavaScript SDK (only script, not full website)
+
+✔ Lets you create and open the Razorpay payment modal
+
+✔ Sends the payment info securely to Razorpay servers -->
